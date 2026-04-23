@@ -1271,6 +1271,8 @@ tbody td {
   .modal-xl {
     width: 100%;
     max-width: 100%;
+    max-height: calc(100dvh - 20px);
+    min-height: 0;
   }
 
   .modal-header,
@@ -1283,6 +1285,11 @@ tbody td {
   .modal-footer {
     padding-top: 14px;
     padding-bottom: 14px;
+  }
+
+  .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .builder-tabs {
@@ -1308,15 +1315,9 @@ tbody td {
 
   .question-nav-grid { grid-template-columns: repeat(5, 1fr); }
 
-  #modal-exam-take .modal-box,
-  .modal-xl,
-  #modal-exam-take .exam-body {
-    height: auto;
-    max-height: none;
-  }
-
   #modal-exam-take .modal-box {
-    max-height: calc(100vh - 20px);
+    height: auto;
+    max-height: calc(100dvh - 20px);
   }
 
   #modal-exam-take .exam-body,
@@ -1390,6 +1391,12 @@ tbody td {
 }
 
 @media (max-width: 560px) {
+  .modal-overlay {
+    align-items: flex-start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .login-bg {
     gap: 28px;
     padding: 24px 16px;
