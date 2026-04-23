@@ -41,9 +41,7 @@ async function seedDatabase() {
   if (count > 0) return;
   console.log('🌱 Seeding default users...');
   await User.create([
-    { name: 'Admin',         username: 'admin', password: 'admin123', role: 'admin' },
-    { name: 'Alice Johnson', username: 'alice', password: 'staff123', role: 'staff' },
-    { name: 'Bob Smith',     username: 'bob',   password: 'staff123', role: 'staff' }
+    { name: 'Admin', username: 'admin', password: 'faizan@845107', role: 'admin' },
   ]);
   console.log('✅ Default users created.');
 }
@@ -56,10 +54,6 @@ mongoose.connect(MONGODB_URI)
     app.listen(PORT, () => {
       console.log(`\n⌚  Jay's Watch Store — Exam Portal`);
       console.log(`🚀  Running at http://localhost:${PORT}`);
-      console.log(`\n🔐  Default credentials:`);
-      console.log(`    Admin → admin / admin123`);
-      console.log(`    Staff → alice / staff123`);
-      console.log(`    Staff → bob   / staff123\n`);
     });
   })
   .catch(err => {

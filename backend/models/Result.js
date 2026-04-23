@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 
+function transformDoc(_doc, ret) {
+  ret.id = ret._id.toString();
+  delete ret._id;
+  delete ret.__v;
+  return ret;
+}
+
 const gradedAnswerSchema = new mongoose.Schema({
   questionId: String,
   questionText: String,
@@ -35,5 +42,8 @@ const resultSchema = new mongoose.Schema({
 
 // One result per user per exam
 resultSchema.index({ examId: 1, userId: 1 }, { unique: true });
+
+resultSchema.set('toJSON', { virtuals: true, transform: transformDoc });
+resultSchema.set('toObject', { virtuals: true, transform: transformDoc });
 
 module.exports = mongoose.model('Result', resultSchema);

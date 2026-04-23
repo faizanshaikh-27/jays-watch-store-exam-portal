@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 
+function transformDoc(_doc, ret) {
+  ret.id = ret._id.toString();
+  delete ret._id;
+  delete ret.__v;
+  return ret;
+}
+
 const questionSchema = new mongoose.Schema({
   question: { type: String, required: true },
   type: {
@@ -16,6 +23,9 @@ const questionSchema = new mongoose.Schema({
   }],
   order: { type: Number, default: 0 }
 }, { _id: true });
+
+questionSchema.set('toJSON', { virtuals: true, transform: transformDoc });
+questionSchema.set('toObject', { virtuals: true, transform: transformDoc });
 
 const examSchema = new mongoose.Schema({
   title: {
@@ -55,5 +65,8 @@ const examSchema = new mongoose.Schema({
     required: true
   }
 }, { timestamps: true });
+
+examSchema.set('toJSON', { virtuals: true, transform: transformDoc });
+examSchema.set('toObject', { virtuals: true, transform: transformDoc });
 
 module.exports = mongoose.model('Exam', examSchema);
