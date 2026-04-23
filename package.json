@@ -1,0 +1,13 @@
+{
+  "name": "jays-exam-portal",
+  "version": "1.0.0",
+  "description": "Jay's Watch Store Exam Portal",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "install-deps": "cd backend && npm install"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
