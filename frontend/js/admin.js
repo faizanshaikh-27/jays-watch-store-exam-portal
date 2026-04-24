@@ -1,6 +1,7 @@
 // admin.js
 let allResults = [];
 let allExams = [];
+let pendingAdminResultsExamId = null;
 
 function showAdminPage(pageId) {
   document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
@@ -128,26 +129,29 @@ function deleteExamConfirm(id, title) {
 }
 
 function viewExamResults(examId) {
+  pendingAdminResultsExamId = examId;
   showAdminPage('admin-results');
-  el('result-exam-filter').value = examId;
-  loadAdminResults();
 }
 
 // ── RESULTS ──
 async function loadAdminResults() {
   try {
-    const examId = el('result-exam-filter').value;
+    const filterSel = el('result-exam-filter');
+    if (!allExams.length) allExams = await API.getExams();
+
+    const selectedExamId = pendingAdminResultsExamId !== null
+      ? pendingAdminResultsExamId
+      : filterSel.value;
+
+    filterSel.innerHTML = '<option value="">All Exams</option>' + allExams.map(e => `<option value="${e.id}" ${e.id === selectedExamId ? 'selected' : ''}>${escapeHtml(e.title)}</option>`).join('');
+    pendingAdminResultsExamId = null;
+
+    const examId = filterSel.value;
     if (examId) {
       allResults = await API.getResultsByExam(examId);
     } else {
       allResults = await API.getAllResults();
     }
-
-    // Populate filter
-    if (!allExams.length) allExams = await API.getExams();
-    const filterSel = el('result-exam-filter');
-    const currentVal = filterSel.value;
-    filterSel.innerHTML = '<option value="">All Exams</option>' + allExams.map(e => `<option value="${e.id}" ${e.id === currentVal ? 'selected' : ''}>${escapeHtml(e.title)}</option>`).join('');
 
     renderResultsTable(allResults);
   } catch { showToast('Failed to load results', 'error'); }
