@@ -4,6 +4,14 @@ const Exam = require('../models/Exam');
 const Result = require('../models/Result');
 const { authMiddleware, adminOnly } = require('../middleware/auth');
 
+function serializeResult(result) {
+  const obj = result.toObject ? result.toObject() : { ...result };
+  return {
+    ...obj,
+    submittedAt: obj.submittedAt || obj.createdAt
+  };
+}
+
 // Grade a submission
 function gradeSubmission(exam, answers) {
   let totalEarned = 0;
@@ -108,7 +116,7 @@ router.post('/submit', authMiddleware, async (req, res) => {
 router.get('/', authMiddleware, adminOnly, async (req, res) => {
   try {
     const results = await Result.find().sort({ createdAt: -1 });
-    res.json(results);
+    res.json(results.map(serializeResult));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -118,7 +126,7 @@ router.get('/', authMiddleware, adminOnly, async (req, res) => {
 router.get('/exam/:examId', authMiddleware, adminOnly, async (req, res) => {
   try {
     const results = await Result.find({ examId: req.params.examId }).sort({ createdAt: -1 });
-    res.json(results);
+    res.json(results.map(serializeResult));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -188,7 +196,7 @@ router.get('/leaderboard', authMiddleware, async (req, res) => {
 router.get('/my', authMiddleware, async (req, res) => {
   try {
     const results = await Result.find({ userId: req.user.id }).sort({ createdAt: -1 });
-    res.json(results);
+    res.json(results.map(serializeResult));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -201,7 +209,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
     if (!result) return res.status(404).json({ error: 'Result not found' });
     if (req.user.role === 'staff' && result.userId.toString() !== req.user.id)
       return res.status(403).json({ error: 'Access denied' });
-    res.json(result);
+    res.json(serializeResult(result));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
