@@ -3,6 +3,7 @@ const router = express.Router();
 const Exam = require('../models/Exam');
 const Result = require('../models/Result');
 const { authMiddleware, adminOnly } = require('../middleware/auth');
+const { expirePublishedExams, isExamExpired } = require('../utils/examExpiry');
 
 function serializeResult(result) {
   const obj = result.toObject ? result.toObject() : { ...result };
@@ -72,8 +73,12 @@ router.post('/submit', authMiddleware, async (req, res) => {
     if (!examId || !answers)
       return res.status(400).json({ error: 'examId and answers required' });
 
+    await expirePublishedExams(Exam);
+
     const exam = await Exam.findById(examId);
     if (!exam) return res.status(404).json({ error: 'Exam not found' });
+    if (exam.status !== 'published' || isExamExpired(exam))
+      return res.status(410).json({ error: 'This exam has expired and can no longer be submitted' });
 
     // Check duplicate submission
     const existing = await Result.findOne({ examId, userId: req.user.id });

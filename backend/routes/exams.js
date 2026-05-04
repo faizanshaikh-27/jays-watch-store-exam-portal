@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Exam = require('../models/Exam');
 const { authMiddleware, adminOnly } = require('../middleware/auth');
+const { expirePublishedExams, getExpiryDate, isExamExpired, prepareStatusUpdate } = require('../utils/examExpiry');
 
 // Strip answer keys for staff — keep correctPairs for match_column display
 function stripAnswers(questions) {
@@ -16,6 +17,8 @@ function stripAnswers(questions) {
 // GET all exams
 router.get('/', authMiddleware, async (req, res) => {
   try {
+    await expirePublishedExams(Exam);
+
     let exams = await Exam.find(
       req.user.role === 'staff' ? { status: 'published' } : {}
     ).sort({ createdAt: -1 });
@@ -38,11 +41,13 @@ router.get('/', authMiddleware, async (req, res) => {
 // GET single exam
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
+    await expirePublishedExams(Exam);
+
     const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ error: 'Exam not found' });
 
     if (req.user.role === 'staff') {
-      if (exam.status !== 'published')
+      if (exam.status !== 'published' || isExamExpired(exam))
         return res.status(404).json({ error: 'Exam not found' });
       return res.json({ ...exam.toObject(), questions: stripAnswers(exam.questions) });
     }
@@ -63,6 +68,9 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
     const processedQuestions = questions.map((q, idx) => ({ ...q, order: idx + 1, marks: q.marks || 1 }));
     const calcTotal = processedQuestions.reduce((s, q) => s + q.marks, 0);
 
+    const isPublished = (status || 'draft') === 'published';
+    const publishedAt = isPublished ? new Date() : null;
+
     const exam = await Exam.create({
       title,
       description: description || '',
@@ -71,6 +79,8 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
       passingMarks: passingMarks || Math.ceil((totalMarks || calcTotal) * 0.6),
       questions: processedQuestions,
       status: status || 'draft',
+      publishedAt,
+      expiresAt: publishedAt ? getExpiryDate(publishedAt) : null,
       createdBy: req.user.id
     });
 
@@ -93,7 +103,7 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
     if (duration !== undefined) exam.duration = duration;
     if (totalMarks !== undefined) exam.totalMarks = totalMarks;
     if (passingMarks !== undefined) exam.passingMarks = passingMarks;
-    if (status !== undefined) exam.status = status;
+    prepareStatusUpdate(exam, status);
     if (questions) {
       exam.questions = questions.map((q, idx) => ({ ...q, order: idx + 1, marks: q.marks || 1 }));
     }

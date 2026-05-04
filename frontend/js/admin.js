@@ -30,13 +30,15 @@ async function loadAdminDashboard() {
     [allExams, allResults] = await Promise.all([API.getExams(), API.getAllResults()]);
     const staff = await API.getStaff();
 
-    const published = allExams.filter(e => e.status === 'published').length;
+    const published = allExams.filter(e => e.status === 'published' && getExamRemainingMs(e) > 0).length;
+    const expired = allExams.filter(e => e.status === 'expired' || (e.status === 'published' && getExamRemainingMs(e) <= 0)).length;
     const passCount = allResults.filter(r => r.passed).length;
     const avgScore = allResults.length ? Math.round(allResults.reduce((s, r) => s + r.percentage, 0) / allResults.length) : 0;
 
     el('admin-stats').innerHTML = `
       <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${allExams.length}</div><div class="stat-label">Total Exams</div></div>
       <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value">${published}</div><div class="stat-label">Published</div></div>
+      <div class="stat-card"><div class="stat-icon">!</div><div class="stat-value">${expired}</div><div class="stat-label">Expired</div></div>
       <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value">${staff.length}</div><div class="stat-label">Staff Members</div></div>
       <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${allResults.length}</div><div class="stat-label">Submissions</div></div>
       <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value">${passCount}</div><div class="stat-label">Passed</div></div>
@@ -76,9 +78,11 @@ async function loadAdminDashboard() {
             <span style="font-size:0.78rem;color:var(--text-secondary)">Avg: <b style="color:var(--gold-400)">${avg}%</b></span>
             <span style="font-size:0.78rem;color:var(--text-secondary)">Pass rate: <b style="color:var(--success)">${passRate}%</b></span>
           </div>
+          ${renderExamCountdown(exam)}
           <div class="progress-bar-wrap"><div class="progress-bar" style="width:${avg}%"></div></div>
         </div>`;
     }).join('') : '<div class="empty-state"><p>No exams yet</p></div>';
+    startValidityCountdowns();
 
   } catch (e) {
     showToast('Failed to load dashboard', 'error');
@@ -101,7 +105,7 @@ function renderExamCards() {
   }
   container.innerHTML = allExams.map(exam => `
     <div class="exam-card">
-      <span class="status-badge status-${exam.status}">${exam.status === 'published' ? '● Published' : '○ Draft'}</span>
+      <span class="status-badge status-${getExamStatusLabel(exam).toLowerCase()}" ${exam.status === 'published' && exam.expiresAt ? `data-exam-status-expires="${escapeHtml(exam.expiresAt)}"` : ''}>${getExamStatusLabel(exam)}</span>
       <div class="exam-card-title">${escapeHtml(exam.title)}</div>
       <div class="exam-card-desc">${escapeHtml(exam.description || 'No description')}</div>
       <div class="exam-card-meta">
@@ -109,6 +113,7 @@ function renderExamCards() {
         <span class="meta-tag">📝 ${exam.questions.length} questions</span>
         <span class="meta-tag">⭐ ${exam.totalMarks} marks</span>
         <span class="meta-tag">✅ Pass: ${exam.passingMarks}</span>
+        ${renderExamCountdown(exam)}
       </div>
       <div class="exam-card-actions">
         <button class="btn btn-sm btn-secondary" onclick="showExamBuilder('${exam.id}')">✏️ Edit</button>
@@ -116,6 +121,7 @@ function renderExamCards() {
         <button class="btn btn-sm btn-danger" onclick="deleteExamConfirm('${exam.id}', '${escapeHtml(exam.title).replace(/'/g, "\\'")}')">🗑</button>
       </div>
     </div>`).join('');
+  startValidityCountdowns();
 }
 
 function deleteExamConfirm(id, title) {

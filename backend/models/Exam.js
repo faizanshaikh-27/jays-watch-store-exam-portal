@@ -56,8 +56,16 @@ const examSchema = new mongoose.Schema({
   questions: [questionSchema],
   status: {
     type: String,
-    enum: ['draft', 'published'],
+    enum: ['draft', 'published', 'expired'],
     default: 'draft'
+  },
+  publishedAt: {
+    type: Date,
+    default: null
+  },
+  expiresAt: {
+    type: Date,
+    default: null
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

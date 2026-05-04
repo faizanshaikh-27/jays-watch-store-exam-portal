@@ -9,6 +9,14 @@ let shuffledQuestions = [];
 async function startExam(examId) {
   try {
     const exam = await API.getExam(examId);
+    if (getExamRemainingMs(exam) <= 0) {
+      showToast('This exam has expired.', 'error');
+      if (currentUser.role === 'staff') {
+        loadStaffDashboard();
+        loadStaffExams();
+      }
+      return;
+    }
     activeExam = exam;
     examAnswers = {};
 
@@ -29,7 +37,7 @@ async function startExam(examId) {
     renderExamQuestions();
     renderQuestionNav();
 
-    examTimeLeft = exam.duration * 60;
+    examTimeLeft = Math.min(exam.duration * 60, Math.floor(getExamRemainingMs(exam) / 1000));
     examStartTime = Date.now();
     startTimer();
 

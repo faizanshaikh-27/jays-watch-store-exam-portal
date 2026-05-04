@@ -24,7 +24,7 @@ async function loadStaffDashboard() {
   try {
     const [exams, myResults] = await Promise.all([API.getExams(), API.getMyResults()]);
     const submittedExamIds = new Set(myResults.map(r => r.examId));
-    const remaining = exams.filter(e => !submittedExamIds.has(e.id));
+    const remaining = exams.filter(e => !submittedExamIds.has(e.id) && getExamRemainingMs(e) > 0);
     const avgScore = myResults.length ? Math.round(myResults.reduce((s, r) => s + r.percentage, 0) / myResults.length) : 0;
     const passed = myResults.filter(r => r.passed).length;
 
@@ -52,9 +52,11 @@ async function loadStaffDashboard() {
         <div>
           <div style="font-size:0.88rem;font-weight:500">${escapeHtml(e.title)}</div>
           <div style="font-size:0.75rem;color:var(--text-muted)">⏱ ${e.duration} min · 📝 ${e.questions.length} questions</div>
+          ${renderExamCountdown(e)}
         </div>
-        <button class="btn btn-sm btn-primary" onclick="startExam('${e.id}')">Start</button>
+        <button class="btn btn-sm btn-primary" data-exam-start-expires="${escapeHtml(e.expiresAt || '')}" onclick="startExam('${e.id}')">Start</button>
       </div>`).join('') : '<div class="empty-state" style="padding:20px"><p>All exams completed! 🎉</p></div>';
+    startValidityCountdowns();
 
   } catch { showToast('Failed to load dashboard', 'error'); }
 }
@@ -73,24 +75,27 @@ async function loadStaffExams() {
 
     container.innerHTML = exams.map(exam => {
       const result = submittedMap[exam.id];
+      const isExpired = getExamRemainingMs(exam) <= 0;
       return `
         <div class="exam-card">
-          ${result ? `<span class="status-badge" style="background:rgba(155,168,196,0.1);color:var(--text-muted);border-color:var(--border)">Completed</span>` : `<span class="status-badge status-published">Available</span>`}
+          ${result ? `<span class="status-badge" style="background:rgba(155,168,196,0.1);color:var(--text-muted);border-color:var(--border)">Completed</span>` : `<span class="status-badge ${isExpired ? 'status-expired' : 'status-published'}" ${exam.expiresAt ? `data-exam-status-expires="${escapeHtml(exam.expiresAt)}"` : ''}>${isExpired ? 'Expired' : 'Available'}</span>`}
           <div class="exam-card-title">${escapeHtml(exam.title)}</div>
           <div class="exam-card-desc">${escapeHtml(exam.description || '')}</div>
           <div class="exam-card-meta">
             <span class="meta-tag">⏱ ${exam.duration} min</span>
             <span class="meta-tag">📝 ${exam.questions.length} questions</span>
             <span class="meta-tag">⭐ ${exam.totalMarks} marks</span>
+            ${renderExamCountdown(exam)}
           </div>
           ${result
           ? `<div style="margin-top:8px">
                  <div style="font-size:0.85rem;color:var(--text-secondary)">Your score: <b style="color:${result.passed ? 'var(--success)' : 'var(--danger)'}">${result.earnedMarks}/${result.totalMarks} (${result.percentage}%)</b> — <span class="${result.passed ? 'pill-pass' : 'pill-fail'}">${result.passed ? 'Pass' : 'Fail'}</span></div>
                  <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="viewResult('${result.id}')">View My Result</button>
                </div>`
-          : `<button class="btn btn-primary" onclick="startExam('${exam.id}')">Start Exam →</button>`}
+          : `<button class="btn ${isExpired ? 'btn-secondary' : 'btn-primary'}" ${isExpired ? 'disabled' : ''} data-exam-start-expires="${escapeHtml(exam.expiresAt || '')}" onclick="startExam('${exam.id}')">${isExpired ? 'Expired' : 'Start Exam →'}</button>`}
         </div>`;
     }).join('');
+    startValidityCountdowns();
   } catch { showToast('Failed to load exams', 'error'); }
 }
 

@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
+const Exam = require('./models/Exam');
+const { expirePublishedExams } = require('./utils/examExpiry');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,11 +48,21 @@ async function seedDatabase() {
   console.log('✅ Default users created.');
 }
 
+async function expireExamsQuietly() {
+  try {
+    await expirePublishedExams(Exam);
+  } catch (err) {
+    console.error('Failed to expire exams:', err.message);
+  }
+}
+
 // Connect MongoDB → then start server
 mongoose.connect(MONGODB_URI)
   .then(async () => {
     console.log(`✅ MongoDB connected`);
     await seedDatabase();
+    await expireExamsQuietly();
+    setInterval(expireExamsQuietly, 60 * 1000);
     app.listen(PORT, () => {
       console.log(`\n⌚  Jay's Watch Store — Exam Portal`);
       console.log(`🚀  Running at http://localhost:${PORT}`);
